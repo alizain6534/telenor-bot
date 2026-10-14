@@ -14,7 +14,7 @@ IS_RUNNING = False
 # PROXY CONFIGURATION (Paste your Pakistan proxy details here)
 # =========================================================
 USE_PROXY = True  # Set to False if you want to turn proxies off entirely
-PROXY_IP = "103.4.95.90"  # Example live Pakistani proxy IP
+PROXY_IP = "103.158.237.105"  # Example live Pakistani proxy IP
 PROXY_PORT = "8080"        # Example proxy port
 
 DASHBOARD_HTML = """
