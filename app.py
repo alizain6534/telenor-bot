@@ -10,6 +10,13 @@ app = Flask(__name__)
 STATUS_LOG = "System idle. Ready for today's token payload input."
 IS_RUNNING = False
 
+# =========================================================
+# PROXY CONFIGURATION (Paste your Pakistan proxy details here)
+# =========================================================
+USE_PROXY = True  # Set to False if you want to turn proxies off entirely
+PROXY_IP = "113.192.46.66"  # Example live Pakistani proxy IP
+PROXY_PORT = "8080"        # Example proxy port
+
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html>
@@ -27,13 +34,13 @@ DASHBOARD_HTML = """
 </head>
 <body>
     <div class="card">
-        <h2>⚡ Daily Telenor Packet Automator</h2>
+        <h2>⚡ Proxy-Enabled Telenor Packet Automator</h2>
         <div class="status-box"><strong>Current Logs:</strong><br>{{ status }}</div>
         
         <form action="/trigger" method="post">
             <label style="font-weight: 600; display: block; margin-bottom: 8px;">Paste Raw Packet Log from Interceptor:</label>
             <textarea name="raw_packet" rows="12" placeholder="POST /api/streak/claim HTTP/1.1..."></textarea>
-            <button type="submit">Deploy 20,000 Loops to Cloud</button>
+            <button type="submit">Deploy 20,000 Loops via Proxy</button>
         </form>
     </div>
 </body>
@@ -55,26 +62,24 @@ def trigger():
     if not raw_text:
         return "Error: Clipboard text input was blank.", 400
 
-    # UPGRADED PARSER: Case-insensitive flags ensure it reads variations perfectly
     token_match = re.search(r'X-XENON-TOKEN-V2:\s*([^\r\n]+)', raw_text, re.IGNORECASE)
     signature_match = re.search(r'signature:\s*([^\r\n]+)', raw_text, re.IGNORECASE)
     device_id_match = re.search(r'X-Device-Id:\s*([^\r\n]+)', raw_text, re.IGNORECASE)
 
     if not token_match or not signature_match:
-        STATUS_LOG = f"❌ Parsing Error!\nToken Found: {'Yes' if token_match else 'No'}\nSignature Found: {'Yes' if signature_match else 'No'}\n\nPlease re-copy and paste the entire raw text block cleanly."
-        return "Parsing failure. Check UI status log screen.", 400
+        STATUS_LOG = "❌ Parsing Error! Could not find Token or Signature in your pasted data."
+        return "Parsing failure.", 400
 
     token = token_match.group(1).strip()
     signature = signature_match.group(1).strip()
     device_id = device_id_match.group(1).strip() if device_id_match else "f4f32fc407b4bd83"
 
     IS_RUNNING = True
-    # The fix: Using a safe background processor thread handler
     thread = threading.Thread(target=run_packet_engine, args=(token, signature, device_id))
     thread.start()
 
-    STATUS_LOG = "🚀 Cloud background engine successfully initialized! Processing requests..."
-    return "🚀 Received! Processing loop on server dashboard..."
+    STATUS_LOG = "🚀 Cloud proxy engine successfully initialized! Starting background requests..."
+    return "🚀 Received! Check dashboard status loops."
 
 def run_packet_engine(token, signature, device_id):
     global STATUS_LOG, IS_RUNNING
@@ -111,28 +116,31 @@ def run_packet_engine(token, signature, device_id):
     success_count = 0
     fail_count = 0
 
+    # Build up the proxy router map
+    cloud_proxies = None
+    if USE_PROXY and PROXY_IP and PROXY_PORT:
+        cloud_proxies = {
+            "http": f"http://{PROXY_IP}:{PROXY_PORT}",
+            "https": f"http://{PROXY_IP}:{PROXY_PORT}"
+        }
+
     for i in range(1, total_iterations + 1):
         try:
-            response = requests.post(url, json=body, headers=headers, timeout=8)
+            response = requests.post(url, json=body, headers=headers, proxies=cloud_proxies, timeout=12)
             if response.status_code == 200:
                 success_count += 1
             else:
                 fail_count += 1
-                # If Telenor blocks the IP, this message will immediately populate your interface
-                if i % 10 == 0:
-                    print(f"[Server Warning] Telenor returned error status: {response.status_code}")
             
-            # Displays detailed status information inside your control webpage
-            STATUS_LOG = f"Processing loop: {i}/{total_iterations} completed.\n✅ Successful (200 OK): {success_count}\n❌ Rejected/Errors: {fail_count}"
+            STATUS_LOG = f"Processing loop: {i}/{total_iterations} completed.\n✅ Successful (200 OK): {success_count}\n❌ Rejected/Errors: {fail_count}\n🌐 Proxy Mode: {'ACTIVE' if USE_PROXY else 'OFF'}"
         
-        except Exception as error_msg:
+        except Exception:
             fail_count += 1
-            STATUS_LOG = f"Processing loop: {i}/{total_iterations}\n⚠️ Connection interrupted by cloud error framework."
+            STATUS_LOG = f"Processing loop: {i}/{total_iterations}\n⚠️ Proxy Connection timeout/refused. Trying next cycle..."
 
-        # Keep safe, random anti-ban delay parameters active
         time.sleep(random.uniform(1.4, 2.8))
 
-    STATUS_LOG = f"🏁 Loop Session Finished!\nTotal processed: {total_iterations}\nSuccessful claims: {success_count}\nFailed/Rejected: {fail_count}"
+    STATUS_LOG = f"🏁 Loop Session Finished!\nTotal processed: {total_iterations}\nSuccessful claims: {success_count}\nFailed: {fail_count}"
     IS_RUNNING = False
 
 if __name__ == '__main__':
